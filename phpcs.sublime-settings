@@ -180,5 +180,43 @@
     //}
     "scheck_additional_args": {
         "-strict" : ""
+    },
+
+    // PHP Phan Settings
+
+    // Execute phan
+    "phan_run" : true,
+
+    // Execute phan on file save
+    "phan_command_on_save" : true,
+
+    // If true, then phan_client will be used instead of phan
+    "phan_use_daemon_client" : false,
+
+    // It seems python/sublime cannot always find the phan application
+    // If empty, then use PATH version of phan, else use the set value
+    "phan_executable_path" : "",
+
+    // Additional arguments you can specify into the application
+    //
+    //Example:
+    //{
+    //  "-q" : ""
+    //}
+    "phan_additional_args" : {
+        "-q" : ""
+    },
+
+    // It seems python/sublime cannot always find the phan_client application
+    // If empty, then use PATH version of phan_client, else use the set value
+    "phan_client_executable_path" : "",
+
+    // Additional arguments you can specify into the application
+    //
+    //Example:
+    //{
+    //  "-daemonize-tcp-port" : "1024",
+    //}
+    "phan_client_additional_args": {
     }
 }

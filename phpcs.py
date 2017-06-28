@@ -54,7 +54,14 @@ class Pref:
         "scheck_run",
         "scheck_command_on_save",
         "scheck_executable_path",
-        "scheck_additional_args"
+        "scheck_additional_args",
+        "phan_run",
+        "phan_command_on_save",
+        "phan_use_daemon_client",
+        "phan_executable_path",
+        "phan_additional_args",
+        "phan_client_executable_path",
+        "phan_client_additional_args"
     ]
 
     def load(self):
@@ -375,6 +382,93 @@ class MessDetector(ShellCommand):
             self.error_list.append(error)
 
 
+class Phan(ShellCommand):
+    """Concrete class for Phan"""
+    def execute(self, path):
+        if pref.phan_run != True:
+            return
+
+        if pref.phan_use_daemon_client:
+            self.execute_daemon(path)
+        else:
+            self.execute_phan(path)        
+
+    def execute_phan(self, path):
+        args = []
+
+        if pref.phpcs_php_prefix_path != "" and self.__class__.__name__ in pref.phpcs_commands_to_php_prefix:
+            args = [pref.phpcs_php_prefix_path]
+
+        if pref.phan_executable_path != "":
+                application_path = pref.phan_executable_path
+        else:
+            application_path = 'phan'
+
+        if (len(args) > 0):
+            args.append(application_path)
+        else:
+            args = [application_path]
+
+        for key, value in pref.phan_additional_args.items():
+            args.append(key)
+            if value != "":
+                args.append(value)
+
+        args.append(os.path.normpath(path))
+
+        self.parse_report(args)
+
+    def execute_daemon(self, path):
+        args = []
+
+        if pref.phpcs_php_prefix_path != "" and self.__class__.__name__ in pref.phpcs_commands_to_php_prefix:
+            args = [pref.phpcs_php_prefix_path]
+
+        if pref.phan_client_executable_path != "":
+                application_path = pref.phan_client_executable_path
+        else:
+            application_path = 'phan_client'
+
+        if (len(args) > 0):
+            args.append(application_path)
+        else:
+            args = [application_path]
+
+        for key, value in pref.phan_client_additional_args.items():
+            args.append(key)
+            if value != "":
+                args.append(value)
+
+        args.append('-l')
+        args.append(os.path.normpath(path))
+
+        self.parse_daemon_report(args)
+
+    def parse_report(self, args):
+        report = self.shell_out(args)
+        debug_message(report)
+        lines = re.finditer('.*:(?P<line>\d+) (?P<message>.*)', report)
+
+        for line in lines:
+            error = CheckstyleError(line.group('line'), line.group('message'))
+            self.error_list.append(error)
+
+    def parse_daemon_report(self, args):
+        report = self.shell_out(args)
+        debug_message(report)
+        line = re.search('Files were syntactically invalid', report)
+
+        if line != None:
+            line = re.search(pref.phpcs_linter_regex, report)
+            error = CheckstyleError(line.group('line'), line.group('message'))
+            self.error_list.append(error)
+        else:
+            lines = re.finditer('Phan error: (?P<message>.*) in .* on line (?P<line>\d+)', report)
+
+            for line in lines:
+                error = CheckstyleError(line.group('line'), line.group('message'))
+                self.error_list.append(error)
+
 class Scheck(ShellCommand):
     """Concrete class for Scheck"""
     def execute(self, path):
@@ -481,6 +575,8 @@ class PhpcsCommand():
                 self.checkstyle_reports.append(['MessDetector', MessDetector().get_errors(path), 'dot'])
             if pref.scheck_run:
                 self.checkstyle_reports.append(['Scheck', Scheck().get_errors(path), 'dot'])
+            if pref.phan_run:
+                self.checkstyle_reports.append(['Phan', Phan().get_errors(path), 'dot'])
         else:
             if pref.phpcs_linter_command_on_save and pref.phpcs_linter_run:
                 self.checkstyle_reports.append(['Linter', Linter().get_errors(path), 'dot'])
@@ -490,6 +586,8 @@ class PhpcsCommand():
                 self.checkstyle_reports.append(['MessDetector', MessDetector().get_errors(path), 'dot'])
             if pref.scheck_command_on_save and pref.scheck_run:
                 self.checkstyle_reports.append(['Scheck', Scheck().get_errors(path), 'dot'])
+            if pref.phan_command_on_save and pref.phan_run:
+                self.checkstyle_reports.append(['Phan', Phan().get_errors(path), 'dot'])
 
         sublime.set_timeout(self.generate, 0)
 
